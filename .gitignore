@@ -1,0 +1,15 @@
+node_modules
+dist
+.vite
+*.local
+
+# Playwright MCP artifacts
+.playwright-mcp/
+
+# Generated screenshots
+*.png
+
+# Temporary agent reports and workflow scratch
+.superpowers/sdd/
+.claude/workflows/
+tsconfig.tsbuildinfo

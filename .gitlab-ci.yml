@@ -1,0 +1,51 @@
+# bbt-design — GitLab CI：构建 → GitLab Pages 发布
+#
+# 目标：把打包后的静态站点（dist/）发布到 GitLab Pages，便于在线预览设计效果。
+# Pages 站点地址 = $CI_PAGES_URL（随 GitLab 实例配置，通常
+#   https://<pages-domain>/jxy1/bbt-design/ 或 https://jxy1.<pages-domain>/bbt-design/）。
+#
+# 流程：build（npm ci + types:check + build，产出 dist artifact）→
+#       pages（消费 build artifact，复制到 public/ 发布；仅默认分支）。
+#
+# 注意：
+# - HashRouter（App.tsx）+ vite base './'（vite.config.ts）→ 子路径部署资源可达。
+# - npm registry 用 npmmirror 国内镜像（runner 外网受限）。
+
+stages: [build, deploy]
+
+variables:
+  npm_config_cache: "$CI_PROJECT_DIR/.npm-cache"
+
+build:
+  stage: build
+  image: node:22-alpine
+  cache:
+    key: "$CI_JOB_NAME"
+    paths: [.npm-cache/]
+  before_script:
+    - npm config set registry https://registry.npmmirror.com
+  script:
+    - npm ci --no-audit --no-fund
+    - npm run types:check
+    - npm run build
+  artifacts:
+    paths:
+      - dist
+    expire_in: 1 week
+  rules:
+    - if: $CI_COMMIT_BRANCH
+
+pages:
+  stage: deploy
+  image: alpine:3.20
+  needs: [build]
+  script:
+    - mkdir -p public
+    - cp -r dist/. public/
+  artifacts:
+    paths:
+      - public
+    expire_in: 1 week
+  rules:
+    # 仅默认分支（main）更新 Pages 站点；其余分支不覆盖线上效果
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
